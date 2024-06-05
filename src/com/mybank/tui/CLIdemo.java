@@ -6,7 +6,11 @@ import com.mybank.domain.CheckingAccount;
 import com.mybank.domain.Customer;
 import com.mybank.domain.SavingsAccount;
 import com.mybank.reporting.CustomerReport;
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -42,6 +46,7 @@ public class CLIdemo {
 
     public void init() {
         commandsList = new String[]{"help", "customers", "customer", "report", "exit"};
+        ShowCustomerDetails("data\\test.dat");
     }
 
     public void run() {
@@ -66,7 +71,6 @@ public class CLIdemo {
                         .append("\nThis is all of your ")
                         .append("customers", AttributedStyle.BOLD.foreground(AttributedStyle.RED))
                         .append(":");
-
                 System.out.println(a.toAnsi());
                 if (Bank.getNumberOfCustomers() > 0) {
                     System.out.println("\nLast name\tFirst Name\tBalance");
@@ -97,6 +101,7 @@ public class CLIdemo {
 
                     System.out.println(a.toAnsi());
                     
+                    
                     System.out.println("\nLast name\tFirst Name\tAccount Type\tBalance");
                     System.out.println("-------------------------------------------------------");
                     System.out.println(cust.getLastName() + "\t\t" + cust.getFirstName() + "\t\t" + accType + "\t$" + cust.getAccount(0).getBalance());
@@ -116,6 +121,11 @@ public class CLIdemo {
         }
 
         AnsiConsole.systemUninstall();
+    }
+    
+    private static void generateReport() {
+        CustomerReport report = new CustomerReport();
+        report.generateReport();
     }
 
     private void printWelcomeMessage() {
@@ -145,61 +155,41 @@ public class CLIdemo {
             return null;
         }
     }
-//    
-//    private static void generateReport() {
-//
-//    // Print report header
-//    System.out.println("\t\t\tCUSTOMERS REPORT");
-//    System.out.println("\t\t\t================");
-//
-//    // For each customer...
-//    for ( int cust_idx = 0;
-//          cust_idx < Bank.getNumberOfCustomers();
-//          cust_idx++ ) {
-//      Customer customer = Bank.getCustomer(cust_idx);
-//
-//      // Print the customer's name
-//      System.out.println();
-//      System.out.println("Customer: "
-//                         + customer.getLastName() + ", "
-//                         + customer.getFirstName());
-//
-//      // For each account for this customer...
-//      for ( int acct_idx = 0;
-//            acct_idx < customer.getNumberOfAccounts();
-//            acct_idx++ ) {
-//        Account account = customer.getAccount(acct_idx);
-//        String  account_type = "";
-//
-//        // Determine the account type
-//        if ( account instanceof SavingsAccount ) {
-//          account_type = "Savings Account";
-//        } else if ( account instanceof CheckingAccount ) {
-//          account_type = "Checking Account";
-//        } else {
-//          account_type = "Unknown Account Type";
-//        }
-//
-//        // Print the current balance of the account
-//        System.out.println("    " + account_type + ": current balance is "
-//                           + account.getBalance());
-//        }
-//        }
-//    }
     
-    private static void generateReport() {
-        CustomerReport report = new CustomerReport();
-        report.generateReport();
+    private void ShowCustomerDetails(String fileName) {
+        try (BufferedReader reader = Files.newBufferedReader(Paths.get(fileName))) {
+            int numberOfCustomers = Integer.parseInt(reader.readLine());
+            for (int i = 0; i < numberOfCustomers; i++) {
+                reader.readLine();
+                String[] customersInfo = reader.readLine().split("\t");
+                Bank.addCustomer(customersInfo[0], customersInfo[1]);
+
+                int numberOfCustomersAccounts = Integer.parseInt(customersInfo[2]);
+
+                Customer customer = Bank.getCustomer(i);
+
+                for (int j = 0; j < numberOfCustomersAccounts; j++) {
+                    String[] accountInfo = reader.readLine().split("\t");
+                    String accountType = accountInfo[0];
+                    double balance = Double.parseDouble(accountInfo[1]);
+                    switch (accountType) {
+                        case "S":
+                            double interestRate = Double.parseDouble(accountInfo[2]);
+                            customer.addAccount(new SavingsAccount(balance, interestRate));
+                            break;
+                        case "C":
+                            double overdraftAmount = Double.parseDouble(accountInfo[2]);
+                            customer.addAccount(new CheckingAccount(balance, overdraftAmount));
+                            break;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
-
-        Bank.addCustomer("John", "Doe");
-        Bank.addCustomer("Fox", "Mulder");
-        Bank.getCustomer(0).addAccount(new CheckingAccount(2000));
-        Bank.getCustomer(1).addAccount(new SavingsAccount(1000, 3));
-        
-
         CLIdemo shell = new CLIdemo();
         shell.init();
         shell.run();
